@@ -12,6 +12,7 @@ const PostSchema = new Schema(
         ref: 'Comment',
       },
     ],
+    published: { type: Boolean, required: true },
   },
   {
     timestamps: {

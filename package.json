@@ -9,9 +9,12 @@
     "ui": "browser-sync start --proxy localhost:3000 --files=**/*  --ignore=node_modules --no-ui --no-inject-changes"
   },
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "express": "~4.16.1",
+    "express-async-handler": "^1.2.0",
+    "express-validator": "^7.0.1",
     "mongoose": "^8.1.1",
     "morgan": "~1.9.1"
   },
