@@ -7,7 +7,7 @@ exports.getComment = asyncHandler(async (req, res, next) => {
   const comment = await Comment.find(req.body.commentId);
   if (!comment) {
   }
-  res.status(200).json({
+  return res.status(200).json({
     status: 'success',
     data: {
       comment: comment,
@@ -20,7 +20,7 @@ exports.getAllCommentsByPost = asyncHandler(async (req, res, next) => {
   const comments = await Comment.find({ post: req.body.postId });
   if (!comments) {
   }
-  res.status(200).json({
+  return res.status(200).json({
     status: 'success',
     data: {
       comments: comments,
@@ -30,15 +30,15 @@ exports.getAllCommentsByPost = asyncHandler(async (req, res, next) => {
 
 // Handle comment create on POST.
 exports.createComment = asyncHandler(async (req, res, next) => {
-  res.send('NOT IMPLEMENTED: comment create POST');
+  return res.send('NOT IMPLEMENTED: comment create POST');
 });
 
 // Delete comment on POST.
 exports.deleteComment = asyncHandler(async (req, res, next) => {
-  res.send('NOT IMPLEMENTED: delete comment POST');
+  return res.send('NOT IMPLEMENTED: delete comment POST');
 });
 
 // Update comment on PUT.
 exports.updateComment = asyncHandler(async (req, res, next) => {
-  res.send('NOT IMPLEMENTED: update comment PUT');
+  return res.send('NOT IMPLEMENTED: update comment PUT');
 });

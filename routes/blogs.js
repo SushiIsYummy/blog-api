@@ -12,15 +12,15 @@ const validateObjectIdComment = validateObjectIdMiddleware(
   'Comment'
 );
 
-// Blog-related routes
-router.get('/', BlogController.getAllBlogs);
+// Blog routes
+router.get('/', validateObjectIdBlog, BlogController.getBlogs);
 router.get('/:blogId', validateObjectIdBlog, BlogController.getBlog);
-router.post('/', BlogController.createBlog);
+router.post('/', validateObjectIdBlog, BlogController.createBlog);
 router.put('/:blogId', validateObjectIdBlog, BlogController.updateBlog);
 router.delete('/:blogId', validateObjectIdBlog, BlogController.deleteBlog);
 
-// // Post-related routes
-router.get('/:blogId/posts', PostController.getAllPosts);
+// Post routes
+router.get('/:blogId/posts', PostController.getPostsByBlog);
 router.get(
   '/:blogId/posts/:postId',
   validateObjectIdBlog,
@@ -41,7 +41,7 @@ router.delete(
   PostController.deletePost
 );
 
-// Comment-related routes
+// Comment routes
 router.get(
   '/:blogId/posts/:postId/comments',
   validateObjectIdBlog,

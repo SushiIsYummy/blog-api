@@ -1,16 +1,16 @@
 const { ObjectId } = require('mongoose').Types;
 
-const validateObjectIdMiddleware = (idParam, model) => (req, res, next) => {
+const validateObjectIdMiddleware = (idParam, modelName) => (req, res, next) => {
   const id = req.params[idParam];
 
   if (!ObjectId.isValid(id)) {
     return res.status(404).json({
       status: 'fail',
-      message: `${model} not found`,
+      message: `${modelName} not found`,
     });
   }
 
-  next();
+  return next();
 };
 
 module.exports = validateObjectIdMiddleware;

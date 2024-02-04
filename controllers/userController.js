@@ -2,6 +2,7 @@ const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const { body, validationResult } = require('express-validator');
+const utils = require('../utils/utils');
 
 // Get all users on GET.
 exports.getAllUsers = asyncHandler(async (req, res, next) => {
@@ -11,7 +12,7 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
       .status(404)
       .json({ status: 'fail', data: { message: 'No users found.' } });
   }
-  res.json({ users: users });
+  return res.json({ users: users });
 });
 
 // Get single user on GET.
@@ -26,7 +27,7 @@ exports.getUser = [
         .status(404)
         .json({ status: 'fail', data: { message: 'User not found' } });
     }
-    res.status(200).json({ user: user });
+    return res.status(200).json({ user: user });
   }),
 ];
 
@@ -63,7 +64,7 @@ exports.createUser = [
     .isLength({ min: 1 })
     .withMessage('Password must be specified'),
   body('confirm_password').custom((value, { req }) => {
-    if (value === req.body.password) {
+    if (value !== req.body.password) {
       throw new Error('Passwords do not match');
     }
     return true;
@@ -71,13 +72,12 @@ exports.createUser = [
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      res.status(400).json({
+      return res.status(400).json({
         status: 'fail',
         data: {
           errors: errors.array(),
         },
       });
-      return;
     }
 
     try {
@@ -92,9 +92,15 @@ exports.createUser = [
           username: req.body.username,
           password: hashedPassword,
         });
-        const result = await user.save();
+        const savedUser = await user.save();
 
-        res.status(201).json({
+        const payload = {
+          userId: savedUser._id,
+        };
+
+        const token = utils.generateJwtToken(payload);
+
+        return res.status(201).json({
           status: 'success',
           data: {
             user: {
@@ -102,6 +108,7 @@ exports.createUser = [
               last_name: req.body.last_name,
               username: req.body.username,
             },
+            token: token,
           },
         });
       });
@@ -113,7 +120,7 @@ exports.createUser = [
 
 // Delete user on POST.
 exports.deleteUser = asyncHandler(async (req, res, next) => {
-  res.send('NOT IMPLEMENTED: delete user');
+  return res.send('NOT IMPLEMENTED: delete user');
 });
 
 // Update user on POST.
@@ -148,7 +155,7 @@ exports.updateUserProfile = [
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      res.status(400).json({
+      return res.status(400).json({
         status: 'fail',
         data: {
           errors: errors.array(),
@@ -173,7 +180,7 @@ exports.updateUserProfile = [
       .select('first_name last_name username -_id')
       .exec();
 
-    res.status(200).json({
+    return res.status(200).json({
       status: 'success',
       data: {
         user: updatedUser,
