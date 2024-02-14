@@ -23,7 +23,7 @@ exports.getBlogs = asyncHandler(async (req, res, next) => {
 });
 
 exports.getBlogsByUser = asyncHandler(async (req, res, next) => {
-  const blogs = await Blog.find({ user: req.params.userId }).exec();
+  const blogs = await Blog.find({ author: req.params.userId }).exec();
   return res.status(200).json({
     status: 'success',
     data: {
@@ -35,7 +35,7 @@ exports.getBlogsByUser = asyncHandler(async (req, res, next) => {
 // Get single blog on GET
 exports.getBlog = asyncHandler(async (req, res, next) => {
   const blog = await Blog.findById(req.params.blogId)
-    .populate('user', 'username')
+    .populate('author', 'username first_name last_name')
     .exec();
   if (!blog) {
     return res.status(404).json({ status: 'fail', message: 'Blog not found' });
@@ -85,7 +85,7 @@ exports.createBlog = [
     const blog = new Blog({
       title: req.body.title,
       description: req.body.description,
-      user: req.user.id,
+      author: req.user.userId,
     });
 
     const result = await blog.save();
@@ -93,10 +93,11 @@ exports.createBlog = [
       status: 'success',
       data: {
         message: 'Blog created successfully',
-        user: {
+        blog: {
+          _id: blog._id,
           title: req.body.title,
           description: req.body.description,
-          user: req.user.id,
+          author: req.user.userId,
         },
       },
     });
@@ -133,7 +134,7 @@ exports.deleteBlog = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (req.user.id.toString() === blog.user.toString()) {
+  if (req.user.userId.toString() === blog.user.toString()) {
     const deletedBlog = await Blog.findByIdAndDelete(blog._id);
     return res.status(200).json({
       status: 'success',
@@ -198,11 +199,11 @@ exports.updateBlog = [
     const updatedBlog = new Blog({
       title: req.body.title,
       description: req.body.description,
-      user: req.user.id,
+      user: req.user.userId,
       _id: req.params.blogId,
     });
 
-    if (req.user.id.toString() === existingBlog.user.toString()) {
+    if (req.user.userId.toString() === existingBlog.user.toString()) {
       const updatedBlogReturned = await Blog.findByIdAndUpdate(
         req.params.blogId,
         updatedBlog,

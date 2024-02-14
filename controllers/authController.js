@@ -1,9 +1,11 @@
 const passport = require('passport');
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const { body, validationResult } = require('express-validator');
 const utils = require('../utils/utils');
+const ROLES = require('../config/roles');
 
 exports.loginUser = [
   body('username')
@@ -29,10 +31,12 @@ exports.loginUser = [
       username: req.body.username,
     }).exec();
     if (!existingUser) {
-      return res.status(400).json({
+      return res.status(401).json({
         status: 'fail',
         data: {
-          errors: 'Incorrect username or password',
+          error: {
+            message: 'Incorrect username or password',
+          },
         },
       });
     }
@@ -43,23 +47,40 @@ exports.loginUser = [
     );
 
     if (!isPasswordValid) {
-      return res.status(400).json({
+      return res.status(401).json({
         status: 'fail',
         data: {
-          errors: 'Incorrect username or password',
+          error: {
+            message: 'Incorrect username or password',
+          },
         },
       });
     }
 
     const payload = {
       userId: existingUser._id,
+      username: existingUser.username,
+      role: ROLES.USER,
+      profile_photo: existingUser.profile_photo,
     };
 
     const token = utils.generateJwtToken(payload);
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000,
+    });
 
     return res.status(200).json({
       status: 'success',
       data: {
+        user: {
+          userId: existingUser._id,
+          username: existingUser.username,
+          role: ROLES.USER,
+          profile_photo: existingUser.profile_photo,
+        },
         message: 'You have logged in successfully',
         token: token,
       },
@@ -67,6 +88,21 @@ exports.loginUser = [
   }),
 ];
 
+exports.checkStatus = asyncHandler(async (req, res, next) => {
+  return res.status(200).json({
+    status: 'success',
+    data: {
+      user: req.user,
+    },
+  });
+});
+
 exports.logoutUser = asyncHandler(async (req, res, next) => {
-  return res.send('logout user not implemented');
+  res.clearCookie('jwt');
+  return res.status(200).json({
+    status: 'success',
+    data: {
+      user: req.user,
+    },
+  });
 });

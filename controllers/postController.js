@@ -4,6 +4,7 @@ const asyncHandler = require('express-async-handler');
 const { body, query, validationResult } = require('express-validator');
 const validator = require('validator');
 const ROLES = require('../config/roles');
+const { ObjectId } = require('mongoose').Types;
 
 // Get all published posts on GET.
 exports.getPosts = [
@@ -11,6 +12,23 @@ exports.getPosts = [
     .optional()
     .isInt({ min: 1, max: 50 })
     .withMessage('Limit must be an integer between 1 and 50'),
+  // so far the only option is 'newest'
+  query('sort_by')
+    .optional()
+    .custom((value) => {
+      if (value !== 'newest') {
+        throw new Error('sort_by parameter must be "newest"');
+      }
+      return true;
+    }),
+  query('author_id')
+    .optional()
+    .custom((value) => {
+      if (!ObjectId.isValid(value)) {
+        throw new Error('author_id must be of type ObjectId');
+      }
+      return true;
+    }),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -21,10 +39,22 @@ exports.getPosts = [
         },
       });
     }
-    const posts = await Post.find({ published: true })
+    let findQuery = { published: true };
+
+    if (req.query.author_id) {
+      findQuery.author = req.query.author_id;
+    }
+
+    let postQuery = Post.find(findQuery)
       .limit(req.query.limit)
       .populate('author', 'first_name last_name profile_photo')
-      .exec();
+      .populate('blog');
+
+    if (req.query.sort_by === 'newest') {
+      postQuery = postQuery.sort({ created_at: -1 });
+    }
+
+    const posts = await postQuery.exec();
     if (!posts) {
       return res
         .status(404)
@@ -36,6 +66,7 @@ exports.getPosts = [
       post.content = validator.unescape(post.content);
       return post;
     });
+
     return res.status(200).json({
       status: 'success',
       data: {
@@ -46,7 +77,7 @@ exports.getPosts = [
 ];
 
 exports.getPostsByBlog = asyncHandler(async (req, res, next) => {
-  const posts = await Post.find({}).exec();
+  const posts = await Post.find({ blog: req.params.blogId }).exec();
   if (!posts) {
     return res.status(404).json({ status: 'fail', message: 'Posts not found' });
   }
@@ -59,8 +90,12 @@ exports.getPostsByBlog = asyncHandler(async (req, res, next) => {
 });
 
 // Get post by id on GET.
-exports.getPost = asyncHandler(async (req, res, next) => {
-  const post = await Post.find(req.params.postId).populate('comments').exec();
+exports.getPostById = asyncHandler(async (req, res, next) => {
+  const post = await Post.findById(req.params.postId)
+    .populate('author', 'username first_name last_name profile_photo')
+    .populate('blog')
+    .populate('comments')
+    .exec();
   if (!post) {
     return res.status(404).json({ status: 'fail', message: 'Post not found' });
   }
@@ -79,10 +114,8 @@ exports.createPost = [
     .isLength({ min: 1 })
     .escape()
     .withMessage('Title of post must be specified.'),
-  body('content')
-    .isLength({ min: 1 })
-    .escape()
-    .withMessage('Post content must be specified'),
+  body('subheading').escape().optional(),
+  body('content').optional(),
   body('published').isBoolean(),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
@@ -105,12 +138,27 @@ exports.createPost = [
       });
     }
 
+    const blog = await Blog.findById(req.params.blogId)
+      .populate('author')
+      .exec();
+    if (!blog || !(blog.author._id.toString() === req.user.userId)) {
+      return res.status(400).json({
+        status: 'fail',
+        data: {
+          message:
+            'Blog does not exist or you are trying to create a post on a blog you do not own',
+        },
+      });
+    }
+
     const post = new Post({
       title: req.body.title,
+      subheading: req.body.subheading,
       content: req.body.content,
       published: req.body.published,
+      cover_image: req.body.cover_image,
       blog: req.params.blogId,
-      author: req.user.id,
+      author: req.user.userId,
     });
 
     const createdPost = await post.save();
@@ -122,11 +170,7 @@ exports.createPost = [
     return res.status(201).json({
       status: 'success',
       data: {
-        user: {
-          title: req.body.title,
-          content: req.body.content,
-          published: req.body.published,
-        },
+        post: createdPost,
       },
     });
   }),
@@ -138,13 +182,9 @@ exports.updatePost = [
     .trim()
     .isLength({ min: 1 })
     .escape()
-    .withMessage('Title of post must be specified.')
-    .optional(),
-  body('content')
-    .isLength({ min: 1 })
-    .escape()
-    .withMessage('Post content must be specified')
-    .optional(),
+    .withMessage('Title of post must be specified.'),
+  body('subheading').escape().optional(),
+  body('content').optional(),
   body('published').isBoolean(),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
@@ -159,8 +199,12 @@ exports.updatePost = [
 
     const post = new Post({
       title: req.body.title,
+      subheading: req.body.subheading,
       content: req.body.content,
       published: req.body.published,
+      cover_image: req.body.cover_image,
+      blog: req.params.blogId,
+      author: req.user.userId,
     });
 
     const updatedPost = await Post.findByIdAndUpdate(req.params.postId, post);
@@ -182,7 +226,7 @@ exports.deletePost = asyncHandler(async (req, res, next) => {
   }
 
   // only allow author of post to delete the post
-  if (req.user.id !== post.author._id.toString()) {
+  if (req.user.userId !== post.author._id.toString()) {
     return res.status(403).json({
       status: 'fail',
       data: {

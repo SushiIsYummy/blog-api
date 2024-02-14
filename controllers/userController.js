@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const { body, validationResult } = require('express-validator');
 const utils = require('../utils/utils');
+const ROLES = require('../config/roles');
 
 // Get all users on GET.
 exports.getAllUsers = asyncHandler(async (req, res, next) => {
@@ -62,10 +63,10 @@ exports.createUser = [
   // Consider adding password strength validation rules in the future if needed.
   body('password')
     .isLength({ min: 1 })
-    .withMessage('Password must be specified'),
+    .withMessage('Password must be specified.'),
   body('confirm_password').custom((value, { req }) => {
     if (value !== req.body.password) {
-      throw new Error('Passwords do not match');
+      throw new Error('Passwords do not match.');
     }
     return true;
   }),
@@ -96,10 +97,19 @@ exports.createUser = [
 
         const payload = {
           userId: savedUser._id,
+          username: savedUser.username,
+          role: ROLES.USER,
+          profile_photo: savedUser.profile_photo,
         };
 
         const token = utils.generateJwtToken(payload);
 
+        res.cookie('jwt', token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict',
+          maxAge: 24 * 60 * 60 * 1000,
+        });
         return res.status(201).json({
           status: 'success',
           data: {
@@ -256,5 +266,31 @@ exports.updateUserPassword = [
     } catch (err) {
       return next(err);
     }
+  }),
+];
+
+exports.updateUserAbout = [
+  asyncHandler(async (req, res, next) => {
+    // forbid users from updating other user's about
+    // if (!(req.user?.id?.toString() === req.params.userId)) {
+    //   return res.status(403).json({
+    //     status: 'fail',
+    //     data: {
+    //       message: "You are unauthorized to update this User's about",
+    //     },
+    //   });
+    // }
+    const updatedUser = await User.findByIdAndUpdate(req.params.userId, {
+      $set: {
+        about: req.body.about,
+      },
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        message: "User's about updated",
+      },
+    });
   }),
 ];

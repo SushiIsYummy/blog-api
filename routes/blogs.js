@@ -15,7 +15,7 @@ const validateObjectIdComment = validateObjectIdMiddleware(
 // Blog routes
 router.get('/', validateObjectIdBlog, BlogController.getBlogs);
 router.get('/:blogId', validateObjectIdBlog, BlogController.getBlog);
-router.post('/', validateObjectIdBlog, BlogController.createBlog);
+router.post('/', BlogController.createBlog);
 router.put('/:blogId', validateObjectIdBlog, BlogController.updateBlog);
 router.delete('/:blogId', validateObjectIdBlog, BlogController.deleteBlog);
 
@@ -25,7 +25,7 @@ router.get(
   '/:blogId/posts/:postId',
   validateObjectIdBlog,
   validateObjectIdPost,
-  PostController.getPost
+  PostController.getPostById
 );
 router.post('/:blogId/posts', validateObjectIdBlog, PostController.createPost);
 router.put(

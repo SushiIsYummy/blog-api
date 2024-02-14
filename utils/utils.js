@@ -5,7 +5,7 @@ const generateJwtToken = (user) => {
 
   const token = jwt.sign(user, privateKey, {
     algorithm: 'RS256',
-    // expiresIn: '1d',
+    expiresIn: '1d',
   });
 
   return token;

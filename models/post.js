@@ -3,8 +3,10 @@ const Schema = mongoose.Schema;
 
 const PostSchema = new Schema(
   {
-    title: { type: String, required: true },
-    content: { type: String, required: true },
+    title: { type: String },
+    subheading: { type: String },
+    content: { type: String },
+    cover_image: { type: String },
     blog: {
       type: Schema.Types.ObjectId,
       ref: 'Blog',

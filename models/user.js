@@ -8,6 +8,7 @@ const UserSchema = new Schema(
     last_name: { type: String, required: true },
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
+    about: { type: String },
     blogs: [{ type: Schema.Types.ObjectId, ref: 'Blog' }],
     profile_photo: { type: Buffer, contentType: String, default: null },
   },

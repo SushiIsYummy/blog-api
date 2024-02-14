@@ -6,5 +6,6 @@ const router = express.Router();
 // const validateObjectIdPost = validateObjectIdMiddleware('postId', 'Post');
 
 router.get('/', PostController.getPosts);
+router.get('/:postId', PostController.getPostById);
 
 module.exports = router;

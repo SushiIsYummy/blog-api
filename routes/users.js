@@ -15,6 +15,7 @@ router.get(
   UserController.getUser
 );
 router.post('/', UserController.createUser);
+router.put('/:userId/about', UserController.updateUserAbout);
 router.put(
   '/:userId/update-profile',
   validateObjectIdUser,
@@ -27,7 +28,7 @@ router.put(
 );
 router.delete('/:userId', UserController.deleteUser);
 
-// blog relates routes
+// blog related routes
 router.get(
   '/:userId/blogs',
   validateObjectIdUser,
