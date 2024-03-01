@@ -2,14 +2,14 @@ const express = require('express');
 const router = express.Router();
 const BlogController = require('../controllers/blogController');
 const PostController = require('../controllers/postController');
-const CommentController = require('../controllers/commentController');
+const PostCommentController = require('../controllers/postCommentController');
 const validateObjectIdMiddleware = require('../middleware/validateObjectIdMiddleware');
 
 const validateObjectIdBlog = validateObjectIdMiddleware('blogId', 'Blog');
 const validateObjectIdPost = validateObjectIdMiddleware('postId', 'Post');
 const validateObjectIdComment = validateObjectIdMiddleware(
   'commentId',
-  'Comment'
+  'PostComment'
 );
 
 // Blog routes
@@ -39,40 +39,6 @@ router.delete(
   validateObjectIdBlog,
   validateObjectIdPost,
   PostController.deletePost
-);
-
-// Comment routes
-router.get(
-  '/:blogId/posts/:postId/comments',
-  validateObjectIdBlog,
-  validateObjectIdPost,
-  CommentController.getAllCommentsByPost
-);
-router.get(
-  '/:blogId/posts/:postId/comments',
-  validateObjectIdBlog,
-  validateObjectIdPost,
-  CommentController.getComment
-);
-router.post(
-  '/:blogId/posts/:postId/comments',
-  validateObjectIdBlog,
-  validateObjectIdPost,
-  CommentController.createComment
-);
-router.put(
-  '/:blogId/posts/:postId/comments/:commentId',
-  validateObjectIdBlog,
-  validateObjectIdPost,
-  validateObjectIdComment,
-  CommentController.updateComment
-);
-router.delete(
-  '/:blogId/posts/:postId/comments/:commentId',
-  validateObjectIdBlog,
-  validateObjectIdPost,
-  validateObjectIdComment,
-  CommentController.deleteComment
 );
 
 module.exports = router;

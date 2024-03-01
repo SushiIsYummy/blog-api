@@ -1,22 +1,20 @@
 const mongoose = require('mongoose');
+
 const Schema = mongoose.Schema;
 
 const validateNumberRange = (value) => {
   return value === 1 || value === 0 || value === -1;
 };
 
-const PostVoteSchema = new Schema(
+const PostCommentVoteSchema = new Schema(
   {
-    post: {
+    post: { type: Schema.Types.ObjectId, ref: 'Post', required: true },
+    comment: {
       type: Schema.Types.ObjectId,
-      ref: 'Post',
+      ref: 'PostComment',
       required: true,
     },
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     vote_value: {
       type: Number,
       validate: {
@@ -35,4 +33,4 @@ const PostVoteSchema = new Schema(
   }
 );
 
-module.exports = mongoose.model('PostVote', PostVoteSchema);
+module.exports = mongoose.model('PostCommentVote', PostCommentVoteSchema);
