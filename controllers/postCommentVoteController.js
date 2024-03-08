@@ -164,7 +164,6 @@ async function voteOnPostComment(userId, postId, commentId, voteValue) {
       existingVote.vote_value = voteValue;
       await existingVote.save();
     } else {
-      console.log('creating post comment vote');
       await PostCommentVote.create({
         user: userId,
         post: postId,

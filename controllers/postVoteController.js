@@ -10,7 +10,6 @@ const voteOptions = {
   DOWNVOTE: -1,
 };
 
-// Get votes by post on GET.
 exports.getVotesByPost = asyncHandler(async (req, res, next) => {
   const { upvotes, downvotes } = await getPostUpvotesAndDownvotes(
     req.params.postId
@@ -69,7 +68,6 @@ async function getPostUpvotesAndDownvotes(postId) {
   }
 }
 
-// update vote on post on POST.
 exports.updateVoteOnPost = [
   body('vote_value')
     .optional()
@@ -85,8 +83,7 @@ exports.updateVoteOnPost = [
         },
       });
     }
-    console.log(req.body.vote_value);
-    console.log(typeof req.body.vote_value);
+
     // prevent logged out users from creating a post
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
@@ -124,7 +121,6 @@ exports.updateVoteOnPost = [
   }),
 ];
 
-// delete vote on post on DELETE
 exports.deleteVoteOnPost = asyncHandler(async (req, res, next) => {
   if (req.user.role === ROLES.GUEST) {
     return res.status(403).json({

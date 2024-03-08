@@ -7,7 +7,6 @@ const validator = require('validator');
 const ROLES = require('../config/roles');
 const { ObjectId } = require('mongoose').Types;
 
-// Get all published posts on GET.
 exports.getPosts = [
   query('limit')
     .optional()
@@ -90,7 +89,6 @@ exports.getPostsByBlog = asyncHandler(async (req, res, next) => {
   });
 });
 
-// Get post by id on GET.
 exports.getPostById = asyncHandler(async (req, res, next) => {
   const post = await Post.findById(req.params.postId)
     .populate('author', 'username first_name last_name profile_photo')
@@ -107,7 +105,6 @@ exports.getPostById = asyncHandler(async (req, res, next) => {
   });
 });
 
-// Create post on POST
 exports.createPost = [
   body('title')
     .trim()
@@ -176,7 +173,6 @@ exports.createPost = [
   }),
 ];
 
-// Update post on PUT.
 exports.updatePost = [
   body('title')
     .trim()
@@ -218,7 +214,6 @@ exports.updatePost = [
   }),
 ];
 
-// Delete post by id on DELETE
 exports.deletePost = asyncHandler(async (req, res, next) => {
   const post = await Post.findById(req.params.postId).exec();
   if (!post) {

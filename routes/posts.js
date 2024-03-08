@@ -10,7 +10,7 @@ router.get('/:postId', PostController.getPostById);
 router.get('/:postId/votes', PostVoteController.getVotesByPost);
 router.put('/:postId/votes/vote', PostVoteController.updateVoteOnPost);
 router.delete('/:postId/votes/vote', PostVoteController.deleteVoteOnPost);
-router.get('/:postId/comments', PostCommentController.getAllCommentsOnPost);
+router.get('/:postId/comments', PostCommentController.getCommentsOnPost);
 router.post('/:postId/comments', PostCommentController.createCommentOnPost);
 router.put(
   '/:postId/comments/:commentId',
@@ -27,6 +27,10 @@ router.put(
 router.delete(
   '/:postId/comments/:commentId/votes/vote',
   PostCommentVoteController.deleteVoteOnPostComment
+);
+router.get(
+  '/:postId/comments/:commentId/replies',
+  PostCommentController.getRepliesOnPostComment
 );
 
 module.exports = router;
