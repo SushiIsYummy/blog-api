@@ -11,6 +11,7 @@ const blogsRouter = require('./routes/blogs');
 const postsRouter = require('./routes/posts');
 const authRouter = require('./routes/auth');
 const authenticateUser = require('./middleware/authenticateUserMiddleware');
+const errorHandler = require('./middleware/errorHandler');
 
 // Connect to MongoDB using Mongoose
 mongoose.connect(process.env.MONGODB_URI);
@@ -43,5 +44,7 @@ app.use((req, res, next) => {
     message: 'Resource not found',
   });
 });
+
+app.use(errorHandler);
 
 module.exports = app;

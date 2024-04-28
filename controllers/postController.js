@@ -1,11 +1,13 @@
 const Post = require('../models/post');
 const Blog = require('../models/blog');
+const PostComment = require('../models/postComment');
 const PostVote = require('../models/postVote');
 const asyncHandler = require('express-async-handler');
 const { body, query, validationResult } = require('express-validator');
 const validator = require('validator');
 const ROLES = require('../config/roles');
 const { ObjectId } = require('mongoose').Types;
+const mongoose = require('mongoose');
 
 exports.getPosts = [
   query('limit')
@@ -77,7 +79,48 @@ exports.getPosts = [
 ];
 
 exports.getPostsByBlog = asyncHandler(async (req, res, next) => {
-  const posts = await Post.find({ blog: req.params.blogId }).exec();
+  // const { trashed, published } = req.query;
+  const { selected_option } = req.query;
+
+  let sortOptions = {};
+  const query = {};
+  query.blog = req.params.blogId;
+  query.trashed_at = null;
+  // query.published = false;
+
+  if (selected_option === 'all') {
+    sortOptions = { updated_at: -1, created_at: -1 };
+  } else if (selected_option === 'published') {
+    query.published = true;
+    sortOptions = { updated_at: -1, created_at: -1 };
+  } else if (selected_option === 'draft') {
+    query.published = false;
+    sortOptions = { updated_at: -1, created_at: -1 };
+  } else if (selected_option === 'trash') {
+    query.trashed_at = { $ne: null };
+    sortOptions = { trashed_at: -1 };
+  }
+
+  // if (selected_option === 'trash') {
+  //   query.trashed_at = { $ne: null };
+  //   sortOptions = { trashed_at: -1 };
+  // } else if (trashed === 'false') {
+  //   query.trashed_at = null;
+  //   sortOptions = { content_updated_at: -1, created_at: -1 };
+  // }
+
+  // if (published === 'true') {
+  //   query.published = true;
+  //   sortOptions = { published_at: -1 };
+  // } else if (published === 'false') {
+  //   query.published = false;
+  // }
+
+  const posts = await Post.find(query)
+    .sort(sortOptions)
+    .populate('author', 'username first_name last_name profile_photo')
+    .exec();
+
   if (!posts) {
     return res.status(404).json({ status: 'fail', message: 'Posts not found' });
   }
@@ -106,14 +149,10 @@ exports.getPostById = asyncHandler(async (req, res, next) => {
 });
 
 exports.createPost = [
-  body('title')
-    .trim()
-    .isLength({ min: 1 })
-    .escape()
-    .withMessage('Title of post must be specified.'),
+  body('title').trim().escape().optional(),
   body('subheading').escape().optional(),
   body('content').optional(),
-  body('published').isBoolean(),
+  body('published').isBoolean().optional(),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -136,7 +175,7 @@ exports.createPost = [
     }
 
     const blog = await Blog.findById(req.params.blogId)
-      .populate('author')
+      .populate('author', 'username first_name last_name profile_photo')
       .exec();
     if (!blog || !(blog.author._id.toString() === req.user.userId)) {
       return res.status(400).json({
@@ -173,14 +212,50 @@ exports.createPost = [
   }),
 ];
 
-exports.updatePost = [
-  body('title')
-    .trim()
-    .isLength({ min: 1 })
-    .escape()
-    .withMessage('Title of post must be specified.'),
-  body('subheading').escape().optional(),
+exports.updatePostContent = [
+  body('title').trim().optional(),
+  body('subheading').optional(),
   body('content').optional(),
+  body('cover_image').optional(),
+  asyncHandler(async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'fail',
+        data: {
+          errors: errors.array(),
+        },
+      });
+    }
+
+    const updatedPost = req.foundPost;
+
+    if (req.body.title !== undefined) {
+      updatedPost.title = req.body.title;
+    }
+    if (req.body.subheading !== undefined) {
+      updatedPost.subheading = req.body.subheading;
+    }
+    if (req.body.content !== undefined) {
+      updatedPost.content = req.body.content;
+    }
+    if (req.body.cover_image !== undefined) {
+      updatedPost.cover_image = req.body.cover_image;
+    }
+    updatedPost.content_updated_at = new Date();
+
+    await updatedPost.save();
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        post: updatedPost,
+      },
+    });
+  }),
+];
+
+exports.updatePostPublishStatus = [
   body('published').isBoolean(),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
@@ -193,17 +268,18 @@ exports.updatePost = [
       });
     }
 
-    const post = new Post({
-      title: req.body.title,
-      subheading: req.body.subheading,
-      content: req.body.content,
-      published: req.body.published,
-      cover_image: req.body.cover_image,
-      blog: req.params.blogId,
-      author: req.user.userId,
-    });
+    const updatedPost = req.foundPost;
 
-    const updatedPost = await Post.findByIdAndUpdate(req.params.postId, post);
+    if (req.body.published !== undefined) {
+      updatedPost.published = req.body.published;
+    }
+
+    // published_at is only set the first time a post is published
+    if (updatedPost.published_at === null) {
+      updatedPost.published_at = new Date();
+    }
+
+    await updatedPost.save();
 
     return res.status(200).json({
       status: 'success',
@@ -215,26 +291,95 @@ exports.updatePost = [
 ];
 
 exports.deletePost = asyncHandler(async (req, res, next) => {
-  const post = await Post.findById(req.params.postId).exec();
-  if (!post) {
-    return res.status(404).json({ status: 'fail', message: 'Post not found' });
-  }
+  const postId = req.params.postId;
+  const post = req.foundPost;
 
-  // only allow author of post to delete the post
-  if (req.user.userId !== post.author._id.toString()) {
-    return res.status(403).json({
-      status: 'fail',
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // delete all comments on post
+    const commentsDeletionResult = await PostComment.deleteMany({
+      post: postId,
+    });
+    console.log(`${commentsDeletionResult.deletedCount} comments deleted.`);
+
+    // delete post
+    const deletedPost = await Post.deleteOne({ _id: postId })
+      .session(session)
+      .exec();
+
+    if (!deletedPost) {
+      throw new Error();
+    }
+    throw Error();
+    // await session.commitTransaction();
+
+    // return res.status(200).json({
+    //   status: 'success',
+    // });
+  } catch (error) {
+    console.log('Transaction aborted due to an error: ', error.message);
+    await session.abortTransaction();
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete the post and/or comments.',
+    });
+  } finally {
+    session.endSession();
+  }
+});
+
+exports.movePostToTrash = asyncHandler(async (req, res, next) => {
+  const trashedPost = req.foundPost;
+
+  try {
+    trashedPost.trashed_at = new Date();
+    // trashedPost.published = false;
+    await trashedPost.save();
+
+    return res.status(200).json({
+      status: 'success',
       data: {
-        message: 'You are unauthorized to delete this post',
+        post: trashedPost,
       },
     });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'fail',
+      message: 'Failed to move post to trash',
+    });
   }
+});
 
-  const deletedPost = await Post.findByIdAndDelete(req.params.postId);
-  return res.status(200).json({
-    status: 'success',
-    data: {
-      post: deletedPost,
-    },
-  });
+exports.restorePostFromTrash = asyncHandler(async (req, res, next) => {
+  const restoredPost = req.foundPost;
+
+  try {
+    restoredPost.trashed_at = null;
+
+    const action = req.body.action;
+    // console.log(req.query);
+    // console.log(`poo: ${req.query.poo}`);
+    // console.log(`action: ${req.query.action}`);
+    if (action === 'draft') {
+      restoredPost.published = false;
+    } else if (action === 'publish') {
+      restoredPost.published = true;
+    }
+
+    await restoredPost.save();
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        post: restoredPost,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'fail',
+      message: 'Failed to restore post',
+    });
+  }
 });

@@ -3,10 +3,10 @@ const Schema = mongoose.Schema;
 
 const PostSchema = new Schema(
   {
-    title: { type: String },
-    subheading: { type: String },
-    content: { type: String },
-    cover_image: { type: String },
+    title: { type: String, default: '' },
+    subheading: { type: String, default: '' },
+    content: { type: String, default: '' },
+    cover_image: { type: String, default: null },
     blog: {
       type: Schema.Types.ObjectId,
       ref: 'Blog',
@@ -17,7 +17,10 @@ const PostSchema = new Schema(
       ref: 'User',
       required: true,
     },
-    published: { type: Boolean, required: true },
+    published: { type: Boolean, default: false },
+    published_at: { type: Date, default: null },
+    trashed_at: { type: Date, default: null },
+    content_updated_at: { type: Date, default: null },
   },
   {
     timestamps: {

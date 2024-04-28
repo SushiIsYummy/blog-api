@@ -4,6 +4,7 @@ const BlogController = require('../controllers/blogController');
 const PostController = require('../controllers/postController');
 const PostCommentController = require('../controllers/postCommentController');
 const validateObjectIdMiddleware = require('../middleware/validateObjectIdMiddleware');
+const authorizePostOwner = require('../middleware/authorizePostOwner');
 
 const validateObjectIdBlog = validateObjectIdMiddleware('blogId', 'Blog');
 const validateObjectIdPost = validateObjectIdMiddleware('postId', 'Post');
@@ -15,6 +16,12 @@ const validateObjectIdComment = validateObjectIdMiddleware(
 // Blog routes
 router.get('/', validateObjectIdBlog, BlogController.getBlogs);
 router.get('/:blogId', validateObjectIdBlog, BlogController.getBlog);
+
+router.get(
+  '/:blogId/posts/comments',
+  PostCommentController.getAllPostCommentsByBlog
+);
+
 router.post('/', BlogController.createBlog);
 router.put('/:blogId', validateObjectIdBlog, BlogController.updateBlog);
 router.delete('/:blogId', validateObjectIdBlog, BlogController.deleteBlog);
@@ -32,7 +39,8 @@ router.put(
   '/:blogId/posts/:postId',
   validateObjectIdBlog,
   validateObjectIdPost,
-  PostController.updatePost
+  authorizePostOwner,
+  PostController.updatePostContent
 );
 router.delete(
   '/:blogId/posts/:postId',

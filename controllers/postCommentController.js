@@ -1,4 +1,5 @@
 const Post = require('../models/post');
+const Blog = require('../models/blog');
 const PostComment = require('../models/postComment');
 const PostCommentVote = require('../models/postCommentVote');
 const asyncHandler = require('express-async-handler');
@@ -73,6 +74,100 @@ exports.getCommentsOnPost = [
         next_page: nextPage,
         prev_page: prevPage,
       },
+    });
+  }),
+];
+
+exports.getSingleCommentOnPost = [
+  asyncHandler(async (req, res, next) => {
+    const { postId, commentId } = req.params;
+
+    const commentExists = await PostComment.findOne({
+      post: postId,
+      _id: commentId,
+    })
+      .populate('author', 'first_name last_name profile_photo username')
+      .exec();
+    if (!commentExists) {
+      return res
+        .status(404)
+        .json({ status: 'fail', data: { message: 'Comment not found' } });
+    }
+
+    // const page = parseInt(req.query.page) || 1;
+    // const skipCount = (page - 1) * COMMENTS_PER_PAGE;
+
+    // let totalComments = await PostComment.countDocuments({
+    //   post: postId,
+    // }).exec();
+
+    // let comments = await PostComment.find({ post: postId, parent: null })
+    //   .skip(skipCount)
+    //   .limit(COMMENTS_PER_PAGE)
+    //   .populate('author', 'first_name last_name profile_photo username')
+    //   .exec();
+
+    // const totalPages = Math.ceil(totalComments / COMMENTS_PER_PAGE);
+    // const nextPage = page < totalPages ? page + 1 : null;
+    // const prevPage = page > 1 && page <= totalPages ? page - 1 : null;
+
+    // let commentIds = comments.map((comment) => comment._id);
+
+    // let userVotesOnComments = await PostCommentVote.find({
+    //   post: postId,
+    //   comment: { $in: commentIds },
+    //   user: req.user.userId,
+    // });
+
+    // const commentVotesObj = {};
+    // userVotesOnComments.forEach((obj) => {
+    //   commentVotesObj[obj.comment.toString()] = obj.vote_value;
+    // });
+
+    // // add user vote value on comments if user is logged in
+    // const userRole = req?.user?.role;
+    // if (userRole !== ROLES.GUEST) {
+    //   comments = comments.map((comment) => {
+    //     const userVote = commentVotesObj[comment._id.toString()];
+    //     if (userVote !== undefined) {
+    //     }
+    //     return { ...comment.toObject(), user_vote: userVote };
+    //   });
+    // }
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        comment: commentExists,
+      },
+      // pagination: {
+      //   total_comments: totalComments,
+      //   per_page: COMMENTS_PER_PAGE,
+      //   current_page: page,
+      //   total_pages: totalPages,
+      //   next_page: nextPage,
+      //   prev_page: prevPage,
+      // },
+    });
+  }),
+];
+
+exports.deleteAllCommentsOnPost = [
+  asyncHandler(async (req, res, next) => {
+    const { postId } = req.params;
+
+    try {
+      await PostComment.deleteMany({ postId });
+    } catch (err) {
+      return res.status(200).json({
+        status: 'error',
+        message: 'Unable to delete comments due to server error',
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: null,
     });
   }),
 ];
@@ -160,6 +255,87 @@ exports.getRepliesOnPostComment = [
   }),
 ];
 
+// const COMMENTS_PER_PAGE = 50;
+
+exports.getAllPostCommentsByBlog = [
+  asyncHandler(async (req, res, next) => {
+    const { blogId } = req.params;
+
+    const blogExists = await Blog.findById(blogId);
+    if (!blogExists) {
+      return res
+        .status(404)
+        .json({ status: 'fail', data: { message: 'Blog not found' } });
+    }
+    // const postExists = await Post.findById(postId);
+    // if (!postExists) {
+    //   return res
+    //     .status(404)
+    //     .json({ status: 'fail', data: { message: 'Post not found' } });
+    // }
+
+    // const page = req.query.order_by || 1;
+
+    const page = parseInt(req.query.page) || 1;
+    const skipCount = (page - 1) * COMMENTS_PER_PAGE;
+
+    let totalComments = await PostComment.countDocuments({
+      blog: blogId,
+    }).exec();
+
+    let comments = await PostComment.find({ blog: blogId })
+      .skip(skipCount)
+      .limit(COMMENTS_PER_PAGE)
+      .sort({ created_at: -1 })
+      .populate('author', 'first_name last_name profile_photo username')
+      .populate('post')
+      .exec();
+
+    const totalPages = Math.ceil(totalComments / COMMENTS_PER_PAGE);
+    const nextPage = page < totalPages ? page + 1 : null;
+    const prevPage = page > 1 && page <= totalPages ? page - 1 : null;
+
+    // let commentIds = comments.map((comment) => comment._id);
+
+    // let userVotesOnComments = await PostCommentVote.find({
+    //   post: postId,
+    //   comment: { $in: commentIds },
+    //   user: req.user.userId,
+    // });
+
+    // const commentVotesObj = {};
+    // userVotesOnComments.forEach((obj) => {
+    //   commentVotesObj[obj.comment.toString()] = obj.vote_value;
+    // });
+
+    // add user vote value on comments if user is logged in
+    // const userRole = req?.user?.role;
+    // if (userRole !== ROLES.GUEST) {
+    //   comments = comments.map((comment) => {
+    //     const userVote = commentVotesObj[comment._id.toString()];
+    //     if (userVote !== undefined) {
+    //     }
+    //     return { ...comment.toObject(), user_vote: userVote };
+    //   });
+    // }
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        comments: comments,
+      },
+      pagination: {
+        total_comments: totalComments,
+        per_page: COMMENTS_PER_PAGE,
+        current_page: page,
+        total_pages: totalPages,
+        next_page: nextPage,
+        prev_page: prevPage,
+      },
+    });
+  }),
+];
+
 exports.createCommentOnPost = [
   body('content')
     .trim()
@@ -170,6 +346,10 @@ exports.createCommentOnPost = [
     .trim()
     .custom((value) => isValidObjectId(value))
     .withMessage('"parent" must be a valid ObjectId'),
+  body('blog')
+    .trim()
+    .custom((value) => isValidObjectId(value))
+    .withMessage('"blog" must be a valid ObjectId'),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -181,7 +361,7 @@ exports.createCommentOnPost = [
       });
     }
 
-    const { comment: commentId, parent: parentId } = req.body;
+    const { content, parent: parentId, blog: blogId } = req.body;
     const { postId } = req.params;
 
     // prevent logged out users from creating a post
@@ -218,9 +398,10 @@ exports.createCommentOnPost = [
 
     const postComment = new PostComment({
       author: req.user.userId,
-      post: req.params.postId,
-      content: req.body.content,
-      parent: req.body.parent,
+      post: postId,
+      blog: blogId,
+      content: content,
+      parent: parentId,
     });
 
     let createdPostComment = await postComment.save();

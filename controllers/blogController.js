@@ -54,12 +54,11 @@ exports.createBlog = [
   body('title')
     .trim()
     .isLength({ min: 1 })
-    .escape()
+    // .escape()
     .withMessage('Title must be specified.'),
-  body('description')
-    .isLength({ min: 1 })
-    .escape()
-    .withMessage('Description must be specified.'),
+  body('description').optional(),
+  // .escape()
+  // .withMessage('Description must be specified.'),
   asyncHandler(async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
