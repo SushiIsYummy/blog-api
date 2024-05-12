@@ -38,7 +38,7 @@ exports.getBlog = asyncHandler(async (req, res, next) => {
     .populate('author', 'username first_name last_name')
     .exec();
   if (!blog) {
-    return res.status(404).json({ status: 'fail', message: 'Blog not found' });
+    return res.status(404).json({ status: 'fail', message: 'Blog not found.' });
   }
 
   return res.status(200).json({
@@ -75,9 +75,8 @@ exports.createBlog = [
     if (userRole === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          error: 'You must be logged in to create a blog',
-        },
+        message: 'You must be logged in to create a blog.',
+        data: {},
       });
     }
 
@@ -90,8 +89,8 @@ exports.createBlog = [
     const result = await blog.save();
     return res.status(201).json({
       status: 'success',
+      message: 'Blog created successfully.',
       data: {
-        message: 'Blog created successfully',
         blog: {
           _id: blog._id,
           title: req.body.title,
@@ -108,18 +107,16 @@ exports.deleteBlog = asyncHandler(async (req, res, next) => {
   if (req.user.role === ROLES.GUEST) {
     return res.status(403).json({
       status: 'fail',
-      data: {
-        message: 'You must be logged in to delete a blog',
-      },
+      message: 'You must be logged in to delete a blog.',
+      data: null,
     });
   }
   const blog = await Blog.findById(req.params.blogId).exec();
   if (!blog) {
     return res.status(404).json({
       status: 'fail',
-      data: {
-        message: 'Blog not found',
-      },
+      message: 'Blog not found.',
+      data: null,
     });
   }
 
@@ -127,9 +124,8 @@ exports.deleteBlog = asyncHandler(async (req, res, next) => {
   if (!existingBlog) {
     return res.status(404).json({
       status: 'fail',
-      data: {
-        message: 'Blog not found',
-      },
+      message: 'Blog not found.',
+      data: null,
     });
   }
 
@@ -137,17 +133,16 @@ exports.deleteBlog = asyncHandler(async (req, res, next) => {
     const deletedBlog = await Blog.findByIdAndDelete(blog._id);
     return res.status(200).json({
       status: 'success',
+      message: 'Blog deleted successfully.',
       data: {
-        message: 'Blog deleted successfully',
         blog: deletedBlog,
       },
     });
   } else {
     return res.status(403).json({
       status: 'fail',
-      data: {
-        message: 'You are unauthorized to delete this blog',
-      },
+      message: 'You are unauthorized to delete this blog.',
+      data: null,
     });
   }
 });
@@ -179,9 +174,8 @@ exports.updateBlog = [
     if (userRole === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          error: 'You must be logged in to update a blog',
-        },
+        message: 'You must be logged in to update a blog.',
+        data: {},
       });
     }
 
@@ -189,9 +183,8 @@ exports.updateBlog = [
     if (!existingBlog) {
       return res.status(404).json({
         status: 'fail',
-        data: {
-          message: 'Blog not found',
-        },
+        message: 'Blog not found.',
+        data: null,
       });
     }
 
@@ -210,8 +203,8 @@ exports.updateBlog = [
       );
       return res.status(200).json({
         status: 'success',
+        message: 'Blog updated successfully.',
         data: {
-          message: 'Blog updated successfully',
           user: {
             title: req.body.title,
             description: req.body.description,
@@ -221,9 +214,8 @@ exports.updateBlog = [
     } else {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to update this blog',
-        },
+        message: 'You are unauthorized to update this blog.',
+        data: null,
       });
     }
   }),

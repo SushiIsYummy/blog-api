@@ -51,9 +51,8 @@ exports.updateVoteOnPostComment = [
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to vote on a post',
-        },
+        message: 'You are unauthorized to vote on a post.',
+        data: null,
       });
     }
 
@@ -66,9 +65,8 @@ exports.updateVoteOnPostComment = [
     if (!existingComment) {
       return res.status(404).json({
         status: 'fail',
-        data: {
-          message: 'Comment does not exist.',
-        },
+        message: 'Comment does not exist..',
+        data: null,
       });
     }
 
@@ -82,9 +80,8 @@ exports.updateVoteOnPostComment = [
     if (!voteResponse.success) {
       return res.status(500).json({
         status: 'fail',
-        data: {
-          message: 'Failed to update vote on post comment.',
-        },
+        message: 'Failed to update vote on post comment..',
+        data: null,
       });
     }
 
@@ -101,9 +98,8 @@ exports.deleteVoteOnPostComment = asyncHandler(async (req, res, next) => {
   if (req.user.role === ROLES.GUEST) {
     return res.status(403).json({
       status: 'fail',
-      data: {
-        message: 'You are unauthorized to delete a vote on this post comment',
-      },
+      message: 'You are unauthorized to delete a vote on this post comment.',
+      data: null,
     });
   }
 
@@ -116,9 +112,8 @@ exports.deleteVoteOnPostComment = asyncHandler(async (req, res, next) => {
   if (!existingComment) {
     return res.status(400).json({
       status: 'fail',
-      data: {
-        message: 'Comment does not exist.',
-      },
+      message: 'Comment does not exist..',
+      data: null,
     });
   }
 
@@ -132,9 +127,8 @@ exports.deleteVoteOnPostComment = asyncHandler(async (req, res, next) => {
   if (!deletedVote) {
     return res.status(200).json({
       status: 'success',
-      data: {
-        message: 'Vote not found',
-      },
+      message: 'Vote not found.',
+      data: null,
     });
   }
 
@@ -143,8 +137,8 @@ exports.deleteVoteOnPostComment = asyncHandler(async (req, res, next) => {
 
   return res.status(200).json({
     status: 'success',
+    message: 'Vote on post comment deleted successfully.',
     data: {
-      message: 'Vote on post comment deleted successfully',
       deleted_vote: deletedVote,
     },
   });

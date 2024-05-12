@@ -11,9 +11,8 @@ const authorizePostOwner = asyncHandler(async (req, res, next) => {
   if (!post) {
     return res.status(404).json({
       status: 'fail',
-      data: {
-        message: 'No post found',
-      },
+      message: 'No post found.',
+      data: null,
     });
   }
 
@@ -21,7 +20,7 @@ const authorizePostOwner = asyncHandler(async (req, res, next) => {
   if (post.author.toString() !== userId) {
     return res.status(403).json({
       status: 'fail',
-      message: 'You are unauthorized to perform this action on this post',
+      message: 'You are unauthorized to perform this action on this post.',
     });
   }
 

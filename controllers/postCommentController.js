@@ -17,7 +17,7 @@ exports.getCommentsOnPost = [
     if (!postExists) {
       return res
         .status(404)
-        .json({ status: 'fail', data: { message: 'Post not found' } });
+        .json({ status: 'fail', message: 'Post not found.', data: null });
     }
 
     const page = parseInt(req.query.page) || 1;
@@ -91,7 +91,7 @@ exports.getSingleCommentOnPost = [
     if (!commentExists) {
       return res
         .status(404)
-        .json({ status: 'fail', data: { message: 'Comment not found' } });
+        .json({ status: 'fail', message: 'Comment not found.', data: null });
     }
 
     // const page = parseInt(req.query.page) || 1;
@@ -161,7 +161,7 @@ exports.deleteAllCommentsOnPost = [
     } catch (err) {
       return res.status(200).json({
         status: 'error',
-        message: 'Unable to delete comments due to server error',
+        message: 'Unable to delete comments due to server error.',
       });
     }
 
@@ -182,7 +182,7 @@ exports.getRepliesOnPostComment = [
     if (!postExists) {
       return res
         .status(404)
-        .json({ status: 'fail', data: { message: 'Post not found' } });
+        .json({ status: 'fail', message: 'Post not found.', data: null });
     }
 
     const commentExists = await PostComment.findOne({
@@ -192,7 +192,8 @@ exports.getRepliesOnPostComment = [
     if (!commentExists) {
       return res.status(404).json({
         status: 'fail',
-        data: { message: 'Comment not found on post.' },
+        message: 'Comment not found on post..',
+        data: null,
       });
     }
 
@@ -265,13 +266,13 @@ exports.getAllPostCommentsByBlog = [
     if (!blogExists) {
       return res
         .status(404)
-        .json({ status: 'fail', data: { message: 'Blog not found' } });
+        .json({ status: 'fail', message: 'Blog not found.', data: null });
     }
     // const postExists = await Post.findById(postId);
     // if (!postExists) {
     //   return res
     //     .status(404)
-    //     .json({ status: 'fail', data: { message: 'Post not found' } });
+    //     .json({ status: 'fail', data: { message: 'Post not found.' } });
     // }
 
     // const page = req.query.order_by || 1;
@@ -368,9 +369,8 @@ exports.createCommentOnPost = [
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to create a comment',
-        },
+        message: 'You are unauthorized to create a comment.',
+        data: null,
       });
     }
 
@@ -379,9 +379,8 @@ exports.createCommentOnPost = [
       if (!parent) {
         return res.status(400).json({
           status: 'fail',
-          data: {
-            message: 'Parent comment does not exist',
-          },
+          message: 'Parent comment does not exist.',
+          data: null,
         });
       }
     }
@@ -390,9 +389,8 @@ exports.createCommentOnPost = [
     if (!post || !(post.author._id.toString() === req.user.userId)) {
       return res.status(400).json({
         status: 'fail',
-        data: {
-          message: 'Cannot create comment on a post that does not exist',
-        },
+        message: 'Cannot create comment on a post that does not exist.',
+        data: null,
       });
     }
 
@@ -445,9 +443,8 @@ exports.updatePostComment = [
     if (userRole === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          error: 'You must be logged in to update a comment',
-        },
+        message: 'You must be logged in to update a comment.',
+        data: null,
       });
     }
 
@@ -462,9 +459,8 @@ exports.updatePostComment = [
     if (!existingComment) {
       return res.status(404).json({
         status: 'fail',
-        data: {
-          message: 'Comment not found',
-        },
+        message: 'Comment not found.',
+        data: null,
       });
     }
 
@@ -472,9 +468,8 @@ exports.updatePostComment = [
     if (oldContent === newContent) {
       return res.status(400).json({
         status: 'fail',
-        data: {
-          message: 'New comment content must be different than old comment',
-        },
+        message: 'New comment content must be different than old comment.',
+        data: null,
       });
     }
 
@@ -486,17 +481,16 @@ exports.updatePostComment = [
       );
       return res.status(200).json({
         status: 'success',
+        message: 'Comment updated successfully.',
         data: {
-          message: 'Comment updated successfully',
           comment: updatedComment,
         },
       });
     } else {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to update this comment',
-        },
+        message: 'You are unauthorized to update this comment.',
+        data: null,
       });
     }
   }),
@@ -507,9 +501,8 @@ exports.deleteComment = [
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You must be logged in to delete a comment',
-        },
+        message: 'You must be logged in to delete a comment.',
+        data: null,
       });
     }
 
@@ -518,9 +511,8 @@ exports.deleteComment = [
     if (!comment) {
       return res.status(404).json({
         status: 'fail',
-        data: {
-          message: 'Comment not found',
-        },
+        message: 'Comment not found.',
+        data: null,
       });
     }
 
@@ -528,8 +520,8 @@ exports.deleteComment = [
       const deletedComment = await Comment.findByIdAndDelete(comment._id);
       return res.status(200).json({
         status: 'success',
+        message: 'Comment deleted successfully.',
         data: {
-          message: 'Comment deleted successfully',
           comment: deletedComment,
         },
       });
@@ -537,9 +529,8 @@ exports.deleteComment = [
     } else {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to delete this comment',
-        },
+        message: 'You are unauthorized to delete this comment.',
+        data: null,
       });
     }
   }),

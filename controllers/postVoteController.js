@@ -88,9 +88,8 @@ exports.updateVoteOnPost = [
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to vote on a post',
-        },
+        message: 'You are unauthorized to vote on a post.',
+        data: null,
       });
     }
 
@@ -125,9 +124,8 @@ exports.deleteVoteOnPost = asyncHandler(async (req, res, next) => {
   if (req.user.role === ROLES.GUEST) {
     return res.status(403).json({
       status: 'fail',
-      data: {
-        message: 'You are unauthorized to delete a vote on this post',
-      },
+      message: 'You are unauthorized to delete a vote on this post.',
+      data: null,
     });
   }
 
@@ -140,16 +138,15 @@ exports.deleteVoteOnPost = asyncHandler(async (req, res, next) => {
   if (!deletedVote) {
     return res.status(200).json({
       status: 'success',
-      data: {
-        message: 'Vote not found',
-      },
+      message: 'Vote not found.',
+      data: null,
     });
   }
 
   return res.status(200).json({
     status: 'success',
+    message: 'Vote on post deleted successfully.',
     data: {
-      message: 'Vote on post deleted successfully',
       deleted_vote: deletedVote,
     },
   });

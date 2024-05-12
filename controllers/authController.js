@@ -33,11 +33,8 @@ exports.loginUser = [
     if (!existingUser) {
       return res.status(401).json({
         status: 'fail',
-        data: {
-          error: {
-            message: 'Incorrect username or password',
-          },
-        },
+        message: 'Incorrect username or password.',
+        data: null,
       });
     }
 
@@ -49,11 +46,8 @@ exports.loginUser = [
     if (!isPasswordValid) {
       return res.status(401).json({
         status: 'fail',
-        data: {
-          error: {
-            message: 'Incorrect username or password',
-          },
-        },
+        message: 'Incorrect username or password.',
+        data: null,
       });
     }
 
@@ -74,6 +68,7 @@ exports.loginUser = [
 
     return res.status(200).json({
       status: 'success',
+      message: 'You have logged in successfully.',
       data: {
         user: {
           userId: existingUser._id,
@@ -81,7 +76,6 @@ exports.loginUser = [
           role: ROLES.USER,
           profile_photo: existingUser.profile_photo,
         },
-        message: 'You have logged in successfully',
         token: token,
       },
     });

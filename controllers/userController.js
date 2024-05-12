@@ -11,7 +11,7 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
   if (users.length <= 0) {
     res
       .status(404)
-      .json({ status: 'fail', data: { message: 'No users found.' } });
+      .json({ status: 'fail', message: 'No users found..', data: null });
   }
   return res.json({ users: users });
 });
@@ -26,7 +26,7 @@ exports.getUser = [
     if (!user) {
       res
         .status(404)
-        .json({ status: 'fail', data: { message: 'User not found' } });
+        .json({ status: 'fail', message: 'User not found.', data: null });
     }
     return res.status(200).json({ user: user });
   }),
@@ -258,9 +258,8 @@ exports.updateUserPassword = [
 
         return res.status(200).json({
           status: 'success',
-          data: {
-            message: 'Password updated',
-          },
+          message: 'Password updated.',
+          data: null,
         });
       });
     } catch (err) {
@@ -288,9 +287,8 @@ exports.updateUserAbout = [
 
     return res.status(200).json({
       status: 'success',
-      data: {
-        message: "User's about updated",
-      },
+      message: "User's about updated",
+      data: null,
     });
   }),
 ];

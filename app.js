@@ -41,7 +41,7 @@ app.use('/api/auth', authRouter);
 app.use((req, res, next) => {
   return res.status(404).send({
     status: 'fail',
-    message: 'Resource not found',
+    message: 'Resource not found.',
   });
 });
 

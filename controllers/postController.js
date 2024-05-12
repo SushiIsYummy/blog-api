@@ -60,7 +60,7 @@ exports.getPosts = [
     if (!posts) {
       return res
         .status(404)
-        .json({ status: 'fail', data: { message: 'Posts not found' } });
+        .json({ status: 'fail', message: 'Posts not found.', data: null });
     }
 
     const unescapedPosts = posts.map((post) => {
@@ -122,7 +122,9 @@ exports.getPostsByBlog = asyncHandler(async (req, res, next) => {
     .exec();
 
   if (!posts) {
-    return res.status(404).json({ status: 'fail', message: 'Posts not found' });
+    return res
+      .status(404)
+      .json({ status: 'fail', message: 'Posts not found.' });
   }
   return res.status(200).json({
     status: 'success',
@@ -138,7 +140,7 @@ exports.getPostById = asyncHandler(async (req, res, next) => {
     .populate('blog')
     .exec();
   if (!post) {
-    return res.status(404).json({ status: 'fail', message: 'Post not found' });
+    return res.status(404).json({ status: 'fail', message: 'Post not found.' });
   }
   return res.status(200).json({
     status: 'success',
@@ -168,9 +170,8 @@ exports.createPost = [
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
         status: 'fail',
-        data: {
-          message: 'You are unauthorized to create a post',
-        },
+        message: 'You are unauthorized to create a post.',
+        data: null,
       });
     }
 
@@ -180,10 +181,9 @@ exports.createPost = [
     if (!blog || !(blog.author._id.toString() === req.user.userId)) {
       return res.status(400).json({
         status: 'fail',
-        data: {
-          message:
-            'Blog does not exist or you are trying to create a post on a blog you do not own',
-        },
+        message:
+          'Blog does not exist or you are trying to create a post on a blog you do not own.',
+        data: null,
       });
     }
 
@@ -323,7 +323,7 @@ exports.deletePost = asyncHandler(async (req, res, next) => {
     await session.abortTransaction();
     return res.status(500).json({
       status: 'error',
-      message: 'Failed to delete the post and/or comments.',
+      message: 'Failed to delete the post and/or comments..',
     });
   } finally {
     session.endSession();
@@ -347,7 +347,7 @@ exports.movePostToTrash = asyncHandler(async (req, res, next) => {
   } catch (err) {
     return res.status(500).json({
       status: 'fail',
-      message: 'Failed to move post to trash',
+      message: 'Failed to move post to trash.',
     });
   }
 });
@@ -379,7 +379,7 @@ exports.restorePostFromTrash = asyncHandler(async (req, res, next) => {
   } catch (err) {
     return res.status(500).json({
       status: 'fail',
-      message: 'Failed to restore post',
+      message: 'Failed to restore post.',
     });
   }
 });
