@@ -1,13 +1,49 @@
 const Post = require('../models/post');
 const Blog = require('../models/blog');
 const PostComment = require('../models/postComment');
-const PostCommentVote = require('../models/postCommentVote');
+const PostCommentLog = require('../models/postCommentLog');
 const asyncHandler = require('express-async-handler');
 const { body, validationResult } = require('express-validator');
 const ROLES = require('../config/roles');
 const { isValidObjectId } = require('mongoose');
+const {
+  getCommentsAndCursorByCategory,
+  addUserVoteToComments,
+} = require('../services/postCommentService');
+const { ObjectId } = require('mongoose').Types;
 
 const COMMENTS_PER_PAGE = 50;
+
+exports.getSingleCommentOnPost = [
+  asyncHandler(async (req, res, next) => {
+    const { postId, commentId } = req.params;
+
+    const postExists = await Post.findById(postId);
+    if (!postExists) {
+      return res
+        .status(404)
+        .json({ status: 'fail', message: 'Post not found.', data: null });
+    }
+
+    const comment = await PostComment.findOne({ post: postId, _id: commentId })
+      .populate('author', 'first_name last_name profile_photo username')
+      .exec();
+    if (!comment) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'Comment on post not found.',
+        data: null,
+      });
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        comment: comment,
+      },
+    });
+  }),
+];
 
 exports.getCommentsOnPost = [
   asyncHandler(async (req, res, next) => {
@@ -20,45 +56,27 @@ exports.getCommentsOnPost = [
         .json({ status: 'fail', message: 'Post not found.', data: null });
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const skipCount = (page - 1) * COMMENTS_PER_PAGE;
+    let { cursor, limit, sort_by, max_created_at, excluded_ids } = req.query;
 
-    let totalComments = await PostComment.countDocuments({
-      post: postId,
-    }).exec();
+    limit = parseInt(limit, 10) || 20;
 
-    let comments = await PostComment.find({ post: postId, parent: null })
-      .skip(skipCount)
-      .limit(COMMENTS_PER_PAGE)
-      .populate('author', 'first_name last_name profile_photo username')
-      .exec();
+    const excludedIdsArray = excluded_ids
+      ? excluded_ids.split(',').map((id) => new ObjectId(id))
+      : [];
 
-    const totalPages = Math.ceil(totalComments / COMMENTS_PER_PAGE);
-    const nextPage = page < totalPages ? page + 1 : null;
-    const prevPage = page > 1 && page <= totalPages ? page - 1 : null;
+    let { comments, nextCursor } = await getCommentsAndCursorByCategory(
+      postId,
+      sort_by,
+      limit,
+      cursor,
+      max_created_at,
+      excludedIdsArray
+    );
 
-    let commentIds = comments.map((comment) => comment._id);
-
-    let userVotesOnComments = await PostCommentVote.find({
-      post: postId,
-      comment: { $in: commentIds },
-      user: req.user.userId,
-    });
-
-    const commentVotesObj = {};
-    userVotesOnComments.forEach((obj) => {
-      commentVotesObj[obj.comment.toString()] = obj.vote_value;
-    });
-
-    // add user vote value on comments if user is logged in
+    const userId = req?.user?.userId;
     const userRole = req?.user?.role;
     if (userRole !== ROLES.GUEST) {
-      comments = comments.map((comment) => {
-        const userVote = commentVotesObj[comment._id.toString()];
-        if (userVote !== undefined) {
-        }
-        return { ...comment.toObject(), user_vote: userVote };
-      });
+      comments = await addUserVoteToComments(comments, postId, userId);
     }
 
     return res.status(200).json({
@@ -66,113 +84,14 @@ exports.getCommentsOnPost = [
       data: {
         comments: comments,
       },
-      pagination: {
-        total_comments: totalComments,
-        per_page: COMMENTS_PER_PAGE,
-        current_page: page,
-        total_pages: totalPages,
-        next_page: nextPage,
-        prev_page: prevPage,
+      paging: {
+        cursors: {
+          next: nextCursor,
+        },
       },
     });
   }),
 ];
-
-exports.getSingleCommentOnPost = [
-  asyncHandler(async (req, res, next) => {
-    const { postId, commentId } = req.params;
-
-    const commentExists = await PostComment.findOne({
-      post: postId,
-      _id: commentId,
-    })
-      .populate('author', 'first_name last_name profile_photo username')
-      .exec();
-    if (!commentExists) {
-      return res
-        .status(404)
-        .json({ status: 'fail', message: 'Comment not found.', data: null });
-    }
-
-    // const page = parseInt(req.query.page) || 1;
-    // const skipCount = (page - 1) * COMMENTS_PER_PAGE;
-
-    // let totalComments = await PostComment.countDocuments({
-    //   post: postId,
-    // }).exec();
-
-    // let comments = await PostComment.find({ post: postId, parent: null })
-    //   .skip(skipCount)
-    //   .limit(COMMENTS_PER_PAGE)
-    //   .populate('author', 'first_name last_name profile_photo username')
-    //   .exec();
-
-    // const totalPages = Math.ceil(totalComments / COMMENTS_PER_PAGE);
-    // const nextPage = page < totalPages ? page + 1 : null;
-    // const prevPage = page > 1 && page <= totalPages ? page - 1 : null;
-
-    // let commentIds = comments.map((comment) => comment._id);
-
-    // let userVotesOnComments = await PostCommentVote.find({
-    //   post: postId,
-    //   comment: { $in: commentIds },
-    //   user: req.user.userId,
-    // });
-
-    // const commentVotesObj = {};
-    // userVotesOnComments.forEach((obj) => {
-    //   commentVotesObj[obj.comment.toString()] = obj.vote_value;
-    // });
-
-    // // add user vote value on comments if user is logged in
-    // const userRole = req?.user?.role;
-    // if (userRole !== ROLES.GUEST) {
-    //   comments = comments.map((comment) => {
-    //     const userVote = commentVotesObj[comment._id.toString()];
-    //     if (userVote !== undefined) {
-    //     }
-    //     return { ...comment.toObject(), user_vote: userVote };
-    //   });
-    // }
-
-    return res.status(200).json({
-      status: 'success',
-      data: {
-        comment: commentExists,
-      },
-      // pagination: {
-      //   total_comments: totalComments,
-      //   per_page: COMMENTS_PER_PAGE,
-      //   current_page: page,
-      //   total_pages: totalPages,
-      //   next_page: nextPage,
-      //   prev_page: prevPage,
-      // },
-    });
-  }),
-];
-
-exports.deleteAllCommentsOnPost = [
-  asyncHandler(async (req, res, next) => {
-    const { postId } = req.params;
-
-    try {
-      await PostComment.deleteMany({ postId });
-    } catch (err) {
-      return res.status(200).json({
-        status: 'error',
-        message: 'Unable to delete comments due to server error.',
-      });
-    }
-
-    return res.status(200).json({
-      status: 'success',
-      data: null,
-    });
-  }),
-];
-
-const REPLIES_PER_PAGE = 10;
 
 exports.getRepliesOnPostComment = [
   asyncHandler(async (req, res, next) => {
@@ -192,51 +111,78 @@ exports.getRepliesOnPostComment = [
     if (!commentExists) {
       return res.status(404).json({
         status: 'fail',
-        message: 'Comment not found on post..',
+        message: 'Comment not found on post.',
         data: null,
       });
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const skipCount = (page - 1) * REPLIES_PER_PAGE;
+    let { cursor, limit, max_created_at } = req.query;
+    limit = parseInt(limit, 10) || 20;
 
-    let totalReplies = commentExists.replies;
+    let commentReplies = [];
+    let maxCreatedAtDate =
+      max_created_at && !isNaN(new Date(max_created_at).getTime())
+        ? new Date(max_created_at)
+        : new Date();
 
-    let commentReplies = await PostComment.find({
-      post: postId,
-      parent: commentId,
-    })
-      .skip(skipCount)
-      .limit(REPLIES_PER_PAGE)
-      .populate('author', 'first_name last_name profile_photo username')
-      .exec();
+    if (!cursor) {
+      commentReplies = await PostComment.find({
+        post: postId,
+        parent: commentId,
+        created_at: { $lte: maxCreatedAtDate },
+      })
+        .sort({ created_at: 1, _id: -1 })
+        .limit(limit + 1)
+        .populate('author', 'first_name last_name profile_photo username')
+        .exec();
+    }
 
-    const totalPages = Math.ceil(totalReplies / REPLIES_PER_PAGE);
-    const nextPage = page < totalPages ? page + 1 : null;
-    const prevPage = page > 1 && page <= totalPages ? page - 1 : null;
+    if (cursor) {
+      const [cursorId, cursorCreatedAt, cursorMaxCreatedAtDate] =
+        cursor.split('_');
+      commentReplies = await PostComment.find({
+        post: postId,
+        parent: commentId,
+        created_at: { $lte: new Date(cursorMaxCreatedAtDate) },
+        $or: [
+          {
+            created_at: { $eq: new Date(cursorCreatedAt) },
+            _id: { $lt: new ObjectId(cursorId) },
+          },
+          {
+            created_at: { $gt: new Date(cursorCreatedAt) },
+          },
+        ],
+      })
+        .sort({ created_at: 1, _id: -1 })
+        .limit(limit + 1)
+        .populate('author', 'first_name last_name profile_photo username')
+        .exec();
+    }
 
-    let commentIds = commentReplies.map((comment) => comment._id);
+    let hasMore = false;
+    if (commentReplies.length > limit) {
+      hasMore = true;
+      commentReplies.pop();
+    }
 
-    let userVotesOnComments = await PostCommentVote.find({
-      post: postId,
-      comment: { $in: commentIds },
-      user: req.user.userId,
-    });
+    let nextCursor = null;
+    if (commentReplies.length > 0 && hasMore) {
+      const lastComment = commentReplies[commentReplies.length - 1];
+      let createdAtString = new Date(lastComment['created_at']).toISOString();
+      nextCursor = `${
+        lastComment._id
+      }_${createdAtString}_${maxCreatedAtDate.toISOString()}`;
+    }
 
-    const commentVotesObj = {};
-    userVotesOnComments.forEach((obj) => {
-      commentVotesObj[obj.comment.toString()] = obj.vote_value;
-    });
-
-    // add user vote value on comments if user is logged in
+    const userId = req?.user?.userId;
     const userRole = req?.user?.role;
     if (userRole !== ROLES.GUEST) {
-      commentReplies = commentReplies.map((comment) => {
-        const userVote = commentVotesObj[comment._id.toString()];
-        if (userVote !== undefined) {
-        }
-        return { ...comment.toObject(), user_vote: userVote };
-      });
+      commentReplies = await addUserVoteToComments(
+        commentReplies,
+        postId,
+        userId
+      );
     }
 
     return res.status(200).json({
@@ -244,19 +190,14 @@ exports.getRepliesOnPostComment = [
       data: {
         replies: commentReplies,
       },
-      pagination: {
-        total_comments: totalReplies,
-        per_page: REPLIES_PER_PAGE,
-        current_page: page,
-        total_pages: totalPages,
-        next_page: nextPage,
-        prev_page: prevPage,
+      paging: {
+        cursors: {
+          next: nextCursor,
+        },
       },
     });
   }),
 ];
-
-// const COMMENTS_PER_PAGE = 50;
 
 exports.getAllPostCommentsByBlog = [
   asyncHandler(async (req, res, next) => {
@@ -343,7 +284,7 @@ exports.createCommentOnPost = [
     .isLength({ min: 1 })
     .withMessage('Comment must be at least 1 character long'),
   body('parent')
-    .optional()
+    .optional({ nullable: true })
     .trim()
     .custom((value) => isValidObjectId(value))
     .withMessage('"parent" must be a valid ObjectId'),
@@ -385,8 +326,8 @@ exports.createCommentOnPost = [
       }
     }
 
-    const post = await Post.findById(postId).populate('author').exec();
-    if (!post || !(post.author._id.toString() === req.user.userId)) {
+    const post = await Post.findById(postId).exec();
+    if (!post) {
       return res.status(400).json({
         status: 'fail',
         message: 'Cannot create comment on a post that does not exist.',
@@ -408,6 +349,15 @@ exports.createCommentOnPost = [
       'first_name last_name profile_photo username'
     );
 
+    let createdPostCommentLog = new PostCommentLog({
+      post: createdPostComment.post,
+      comment: createdPostComment,
+      parent: createdPostComment.parent,
+      upvotes: createdPostComment.upvotes,
+      downvotes: createdPostComment.downvotes,
+    });
+    await createdPostCommentLog.save();
+
     if (parentId) {
       await updatePostCommentRepliesCount(postId, parentId);
     }
@@ -415,7 +365,7 @@ exports.createCommentOnPost = [
     return res.status(201).json({
       status: 'success',
       data: {
-        postComment: createdPostComment,
+        comment: createdPostComment,
       },
     });
   }),
@@ -507,7 +457,7 @@ exports.deleteComment = [
     }
 
     const { commentId } = req.params;
-    const comment = await Comment.findById(commentId).exec();
+    const comment = await PostComment.findById(commentId).exec();
     if (!comment) {
       return res.status(404).json({
         status: 'fail',
@@ -517,7 +467,7 @@ exports.deleteComment = [
     }
 
     if (req.user.userId.toString() === comment.user.toString()) {
-      const deletedComment = await Comment.findByIdAndDelete(comment._id);
+      const deletedComment = await PostComment.findByIdAndDelete(comment._id);
       return res.status(200).json({
         status: 'success',
         message: 'Comment deleted successfully.',

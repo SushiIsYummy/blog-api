@@ -27,6 +27,10 @@ router.get('/:postId/votes', PostVoteController.getVotesByPost);
 router.put('/:postId/votes/vote', PostVoteController.updateVoteOnPost);
 router.delete('/:postId/votes/vote', PostVoteController.deleteVoteOnPost);
 router.get('/:postId/comments', PostCommentController.getCommentsOnPost);
+router.post(
+  '/:postId/comments/:orderBy',
+  PostCommentController.getCommentsOnPost
+);
 router.get(
   '/:postId/comments/:commentId',
   validateObjectIdPost,
@@ -34,10 +38,10 @@ router.get(
   PostCommentController.getSingleCommentOnPost
 );
 router.post('/:postId/comments', PostCommentController.createCommentOnPost);
-router.delete(
-  ':postId/comments',
-  PostCommentController.deleteAllCommentsOnPost
-);
+// router.delete(
+//   ':postId/comments',
+//   PostCommentController.deleteAllCommentsOnPost
+// );
 router.put(
   '/:postId/comments/:commentId',
   PostCommentController.updatePostComment

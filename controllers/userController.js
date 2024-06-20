@@ -11,7 +11,7 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
   if (users.length <= 0) {
     res
       .status(404)
-      .json({ status: 'fail', message: 'No users found..', data: null });
+      .json({ status: 'fail', message: 'No users found.', data: null });
   }
   return res.json({ users: users });
 });

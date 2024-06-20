@@ -312,18 +312,17 @@ exports.deletePost = asyncHandler(async (req, res, next) => {
     if (!deletedPost) {
       throw new Error();
     }
-    throw Error();
-    // await session.commitTransaction();
+    await session.commitTransaction();
 
-    // return res.status(200).json({
-    //   status: 'success',
-    // });
+    return res.status(200).json({
+      status: 'success',
+    });
   } catch (error) {
     console.log('Transaction aborted due to an error: ', error.message);
     await session.abortTransaction();
     return res.status(500).json({
       status: 'error',
-      message: 'Failed to delete the post and/or comments..',
+      message: 'Failed to delete the post and/or comments.',
     });
   } finally {
     session.endSession();
@@ -359,9 +358,7 @@ exports.restorePostFromTrash = asyncHandler(async (req, res, next) => {
     restoredPost.trashed_at = null;
 
     const action = req.body.action;
-    // console.log(req.query);
-    // console.log(`poo: ${req.query.poo}`);
-    // console.log(`action: ${req.query.action}`);
+
     if (action === 'draft') {
       restoredPost.published = false;
     } else if (action === 'publish') {
