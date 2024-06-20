@@ -1,10 +1,11 @@
 const PostComment = require('../models/postComment');
+const PostCommentLog = require('../models/postCommentLog');
 const PostCommentVote = require('../models/postCommentVote');
 const asyncHandler = require('express-async-handler');
-const { body, query, validationResult } = require('express-validator');
-const validator = require('validator');
+const { body, validationResult } = require('express-validator');
 const ROLES = require('../config/roles');
-const { ObjectId } = require('mongoose').Types;
+const mongoose = require('mongoose');
+const { ObjectId } = mongoose.Types;
 
 const voteOptions = {
   UPVOTE: 1,
@@ -57,15 +58,17 @@ exports.updateVoteOnPostComment = [
     }
 
     const { postId, commentId } = req.params;
+    const { vote_value: voteValue } = req.body;
 
     let existingComment = await PostComment.findOne({
       _id: commentId,
       post: postId,
     });
+
     if (!existingComment) {
       return res.status(404).json({
         status: 'fail',
-        message: 'Comment does not exist..',
+        message: 'Comment does not exist.',
         data: null,
       });
     }
@@ -74,13 +77,14 @@ exports.updateVoteOnPostComment = [
       req.user.userId,
       postId,
       commentId,
-      req.body.vote_value
+      voteValue,
+      existingComment
     );
 
     if (!voteResponse.success) {
       return res.status(500).json({
         status: 'fail',
-        message: 'Failed to update vote on post comment..',
+        message: 'Failed to update vote on post comment.',
         data: null,
       });
     }
@@ -104,78 +108,131 @@ exports.deleteVoteOnPostComment = asyncHandler(async (req, res, next) => {
   }
 
   const { postId, commentId } = req.params;
+  const { userId } = req.user;
 
-  let existingComment = await PostComment.findOne({
-    _id: commentId,
-    post: postId,
-  });
-  if (!existingComment) {
-    return res.status(400).json({
-      status: 'fail',
-      message: 'Comment does not exist..',
-      data: null,
+  const session = await mongoose.startSession();
+
+  try {
+    await session.withTransaction(async () => {
+      let existingComment = await PostComment.findOne({
+        _id: commentId,
+        post: postId,
+      })
+        .populate('author', '_id')
+        .session(session);
+
+      if (!existingComment) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Comment does not exist.',
+          data: null,
+        });
+      }
+      const deletedVote = await PostCommentVote.findOneAndDelete(
+        {
+          post: postId,
+          comment: commentId,
+          user: userId,
+        },
+        { session }
+      ).exec();
+
+      // if no vote is found, it means the user neither upvoted or downvoted
+      if (!deletedVote) {
+        return res.status(404).json({
+          status: 'fail',
+          message: 'Vote not found.',
+          data: null,
+        });
+      }
+
+      let commentLog = await PostCommentLog.findOne({
+        comment: commentId,
+        post: postId,
+        expires_at: { $exists: false },
+      })
+        .session(session)
+        .exec();
+      commentLog.update_required = true;
+      await commentLog.save({ session });
+
+      let oldVote = deletedVote.vote_value;
+      await updatePostCommentVotesCount(commentId, oldVote, 0, session);
+
+      return res.status(200).json({
+        status: 'success',
+        message: 'Vote on post comment deleted successfully.',
+        data: {
+          deleted_vote: deletedVote,
+        },
+      });
+    });
+  } catch (error) {
+    console.log('Transaction aborted due to an error: ', error.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to delete vote on post comment.',
     });
   }
-
-  const deletedVote = await PostCommentVote.findOneAndDelete({
-    post: postId,
-    comment: commentId,
-    user: req.user.userId,
-  });
-
-  // if no vote is found, it means the user neither upvoted or downvoted
-  if (!deletedVote) {
-    return res.status(200).json({
-      status: 'success',
-      message: 'Vote not found.',
-      data: null,
-    });
-  }
-
-  let oldVote = deletedVote.vote_value;
-  await updatePostCommentVotesCount(commentId, oldVote, 0);
-
-  return res.status(200).json({
-    status: 'success',
-    message: 'Vote on post comment deleted successfully.',
-    data: {
-      deleted_vote: deletedVote,
-    },
-  });
 });
 
 async function voteOnPostComment(userId, postId, commentId, voteValue) {
-  try {
-    let existingVote = await PostCommentVote.findOne({
-      user: userId,
-      post: postId,
-      comment: commentId,
-    });
+  const session = await mongoose.startSession();
 
-    let oldVote = null;
-    if (existingVote) {
-      oldVote = existingVote.vote_value;
-      existingVote.vote_value = voteValue;
-      await existingVote.save();
-    } else {
-      await PostCommentVote.create({
+  let existingVote = null;
+  try {
+    await session.withTransaction(async () => {
+      existingVote = await PostCommentVote.findOne({
         user: userId,
         post: postId,
         comment: commentId,
-        vote_value: voteValue,
-      });
-    }
+      }).session(session);
 
-    await updatePostCommentVotesCount(commentId, oldVote, voteValue);
+      let oldVote = null;
+      if (existingVote) {
+        oldVote = existingVote.vote_value;
+        existingVote.vote_value = voteValue;
 
+        await existingVote.save({ session });
+      } else {
+        await PostCommentVote.create(
+          [
+            {
+              user: userId,
+              post: postId,
+              comment: commentId,
+              vote_value: voteValue,
+            },
+          ],
+          { session }
+        );
+      }
+
+      let commentLog = await PostCommentLog.findOne({
+        comment: commentId,
+        post: postId,
+        expires_at: { $exists: false },
+      }).session(session);
+      commentLog.update_required = true;
+      await commentLog.save({ session });
+
+      await updatePostCommentVotesCount(commentId, oldVote, voteValue, session);
+    });
     return { success: true, vote: existingVote };
   } catch (error) {
-    console.error('Error voting on comment:', error);
+    console.log('Transaction aborted due to an error: ', error.message);
+    console.error('Error occured while voting on comment:', error);
     return { success: false, error };
   }
 }
 
-async function updatePostCommentVotesCount(commentId, oldVote, newVote) {
+// TODO: use $inc instead of countDocuments()
+async function updatePostCommentVotesCount(
+  commentId,
+  oldVote,
+  newVote,
+  session
+) {
   try {
     if (oldVote === newVote) {
       return;
@@ -190,7 +247,7 @@ async function updatePostCommentVotesCount(commentId, oldVote, newVote) {
       downvotesCount = await PostCommentVote.countDocuments({
         comment: commentId,
         vote_value: voteOptions.DOWNVOTE,
-      });
+      }).session(session);
     } else if (voteSum === 0) {
       const convertedCommentId = new ObjectId(commentId);
       const votes = await PostCommentVote.aggregate([
@@ -201,7 +258,7 @@ async function updatePostCommentVotesCount(commentId, oldVote, newVote) {
             count: { $sum: 1 },
           },
         },
-      ]);
+      ]).session(session);
       upvotesCount =
         votes.find((vote) => vote._id === voteOptions.UPVOTE)?.count || 0;
       downvotesCount =
@@ -210,7 +267,7 @@ async function updatePostCommentVotesCount(commentId, oldVote, newVote) {
       upvotesCount = await PostCommentVote.countDocuments({
         comment: commentId,
         vote_value: voteOptions.UPVOTE,
-      });
+      }).session(session);
     }
 
     const updateObject = {};

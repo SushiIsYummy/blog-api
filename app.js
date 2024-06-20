@@ -12,6 +12,7 @@ const postsRouter = require('./routes/posts');
 const authRouter = require('./routes/auth');
 const authenticateUser = require('./middleware/authenticateUserMiddleware');
 const errorHandler = require('./middleware/errorHandler');
+const cronJobs = require('./schedulers/cron-jobs');
 
 // Connect to MongoDB using Mongoose
 mongoose.connect(process.env.MONGODB_URI);
@@ -22,6 +23,8 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 db.once('open', () => {
   console.log('Connected to MongoDB');
 });
+
+cronJobs.updateCommentLogs.start();
 
 const app = express();
 app.use(logger('dev'));
