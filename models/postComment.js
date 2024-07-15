@@ -8,6 +8,7 @@ const PostCommentSchema = new Schema(
     blog: { type: Schema.Types.ObjectId, ref: 'Blog', required: true },
     author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     content: { type: String, required: true },
+    last_edited_at: { type: Date, default: null },
     parent: { type: Schema.Types.ObjectId, ref: 'PostComment', default: null },
     upvotes: {
       type: Number,

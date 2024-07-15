@@ -426,9 +426,9 @@ exports.updatePostComment = [
     if (req.user.userId.toString() === existingComment.author.toString()) {
       const updatedComment = await PostComment.findByIdAndUpdate(
         commentId,
-        { content: newContent },
+        { content: newContent, last_edited_at: new Date() },
         { new: true }
-      );
+      ).populate('author', 'first_name last_name profile_photo username');
       return res.status(200).json({
         status: 'success',
         message: 'Comment updated successfully.',
