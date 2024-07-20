@@ -5,10 +5,11 @@ const PostCommentLog = require('../models/postCommentLog');
 const asyncHandler = require('express-async-handler');
 const { body, validationResult } = require('express-validator');
 const ROLES = require('../config/roles');
-const { isValidObjectId } = require('mongoose');
+const { isValidObjectId, mongoose } = require('mongoose');
 const {
   getCommentsAndCursorByCategory,
   addUserVoteToComments,
+  deleteCommentCascade,
 } = require('../services/postCommentService');
 const { ObjectId } = require('mongoose').Types;
 
@@ -446,7 +447,7 @@ exports.updatePostComment = [
   }),
 ];
 
-exports.deleteComment = [
+exports.deletePostComment = [
   asyncHandler(async (req, res, next) => {
     if (req.user.role === ROLES.GUEST) {
       return res.status(403).json({
@@ -456,9 +457,14 @@ exports.deleteComment = [
       });
     }
 
-    const { commentId } = req.params;
-    const comment = await PostComment.findById(commentId).exec();
-    if (!comment) {
+    const { postId, commentId } = req.params;
+
+    const existingComment = await PostComment.findOne({
+      post: postId,
+      _id: commentId,
+    }).exec();
+
+    if (!existingComment) {
       return res.status(404).json({
         status: 'fail',
         message: 'Comment not found.',
@@ -466,8 +472,16 @@ exports.deleteComment = [
       });
     }
 
-    if (req.user.userId.toString() === comment.user.toString()) {
-      const deletedComment = await PostComment.findByIdAndDelete(comment._id);
+    if (req.user.userId.toString() !== existingComment.author.toString()) {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'You are unauthorized to delete this comment.',
+        data: null,
+      });
+    }
+
+    try {
+      const deletedComment = await deleteCommentCascade(postId, commentId);
       return res.status(200).json({
         status: 'success',
         message: 'Comment deleted successfully.',
@@ -475,12 +489,10 @@ exports.deleteComment = [
           comment: deletedComment,
         },
       });
-      // FUTURE TODO: remove all child comments under the deleted comment
-    } else {
-      return res.status(403).json({
-        status: 'fail',
-        message: 'You are unauthorized to delete this comment.',
-        data: null,
+    } catch (error) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'Failed to delete comment on post.',
       });
     }
   }),

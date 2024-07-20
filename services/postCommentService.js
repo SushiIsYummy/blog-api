@@ -278,7 +278,57 @@ async function addUserVoteToComments(comments, postId, userId) {
   return comments;
 }
 
+async function deleteCommentCascade(postId, commentId) {
+  const session = await mongoose.startSession();
+
+  let deletedComment = null;
+  await session.withTransaction(async () => {
+    deletedComment = await PostComment.findOneAndDelete({
+      post: postId,
+      _id: commentId,
+    })
+      .session(session)
+      .exec();
+
+    await PostCommentVote.deleteMany({ post: postId, comment: commentId })
+      .session(session)
+      .exec();
+
+    await PostCommentLog.deleteMany({ post: postId, comment: commentId })
+      .session(session)
+      .exec();
+
+    if (deletedComment.replies > 0) {
+      const replies = await PostComment.find({
+        post: postId,
+        parent: commentId,
+      })
+        .session(session)
+        .exec();
+
+      for (const reply of replies) {
+        await PostCommentVote.deleteMany({ post: postId, comment: reply._id })
+          .session(session)
+          .exec();
+
+        await PostCommentLog.deleteMany({ post: postId, comment: reply._id })
+          .session(session)
+          .exec();
+      }
+
+      await PostComment.deleteMany({
+        post: postId,
+        parent: commentId,
+      })
+        .session(session)
+        .exec();
+    }
+  });
+  return deletedComment;
+}
+
 module.exports = {
   getCommentsAndCursorByCategory,
   addUserVoteToComments,
+  deleteCommentCascade,
 };

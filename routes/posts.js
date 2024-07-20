@@ -46,6 +46,10 @@ router.put(
   '/:postId/comments/:commentId',
   PostCommentController.updatePostComment
 );
+router.delete(
+  '/:postId/comments/:commentId',
+  PostCommentController.deletePostComment
+);
 router.get(
   '/:postId/comments/:commentId/votes',
   PostCommentVoteController.getVotesOnPostComment
